@@ -33,15 +33,13 @@ public class SimpleHttpClientImpl extends SimpleHttpClient {
     private void sendHttpRequest(BufferedWriter out, SimpleHttpRequest request) throws IOException {
         out.write(buildRequestLine(request));
 
-        // Cabeçalhos obrigatórios e adicionais
         out.write("Host: " + request.uri().getHost() + "\r\n");
         writeHeaders(out, request);
 
-        //  Corpo (se necessário)
         if (request.httpMethod() == HttpMethod.POST && request.body().isPresent()) {
             writeRequestBody(out, request);
         } else {
-            out.write("\r\n"); // Linha em branco para terminar os cabeçalhos
+            out.write("\r\n");
         }
 
         out.flush();
@@ -51,7 +49,7 @@ public class SimpleHttpClientImpl extends SimpleHttpClient {
         return request.httpMethod().name() + " " + request.uri().getPath() + " HTTP/1.1\r\n";
     }
 
-    private void writeHeaders(BufferedWriter out, SimpleHttpRequest request) throws IOException {
+    private void writeHeaders(BufferedWriter out, SimpleHttpRequest request) {
         request.headers().map().forEach((key, value) -> {
             try {
                 out.write(key + ": " + String.join(",", value) + "\r\n");
@@ -64,24 +62,22 @@ public class SimpleHttpClientImpl extends SimpleHttpClient {
     private void writeRequestBody(BufferedWriter out, SimpleHttpRequest request) throws IOException {
         byte[] bodyContent = request.body().get().getContent();
         out.write("Content-Length: " + bodyContent.length + "\r\n");
-        out.write("\r\n"); // Linha em branco para terminar os cabeçalhos
-        out.write(new String(bodyContent)); // Corpo
+        out.write("\r\n");
+        out.write(new String(bodyContent));
     }
 
     private HttpResponse readHttpResponse(BufferedReader in) throws IOException {
-        // Ler a linha de status
+
         String statusLine = in.readLine();
         if (statusLine == null) {
-            throw new IOException("Nenhuma resposta recebida do servidor");
+            throw new IOException("No response received from server");
         }
 
         String[] statusParts = statusLine.split(" ");
         int statusCode = Integer.parseInt(statusParts[1]);
 
-        // Ler os cabeçalhos da resposta
         Map<String, String> headers = readResponseHeaders(in);
 
-        // Ler o corpo da resposta
         HttpEntity entity = readResponseBody(in, headers);
 
         return new HttpResponse(entity, statusCode, headers);
